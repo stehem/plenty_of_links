@@ -11,30 +11,25 @@ import (
   "io/ioutil"
   "encoding/json"
   "unicode/utf8"
+  "strings"
+  "time"
 )
 
 type Link struct {
   url string
-  source string
-  category string
-  text string
+  subreddit string
+  title string
 }
 
-type TwitterJSON struct {
-  Results []Result
-}
-
-type Result struct {
-  Text string
-  Entities Entity
-}
-
-type Entity struct {
-  Urls []Url
-}
-
-type Url struct {
-  Expanded_url string
+type RedditJSON struct {
+  Data struct {
+    Children []struct {
+      Data struct {
+        Title string
+        Url string
+      }
+    }
+  }
 }
 
 
@@ -42,7 +37,12 @@ type Url struct {
 func main() {
   //results := getlinks()
   //fmt.Println(results)
-  SaveLinks(GetTwitterLinks())
+  //SaveLinks(GetTwitterLinks())
+  subs := []string{"ruby", "golang", "python", "javascript", "clojure", "scala"}
+  for _, sub := range subs {
+    links := GetRedditLinks(sub)
+    SaveLinks(links)
+  }
 }
 
 func getdb() *sql.DB {
@@ -55,14 +55,14 @@ func getdb() *sql.DB {
   return db
 }
 
-func getlinks() []Link {
+func GetLinks() []Link {
   db := getdb()
   defer db.Close()
-  rows, _ := db.Query("SELECT url, source, category, text FROM links")
+  rows, _ := db.Query("SELECT url, subreddit, title FROM links ORDER BY created_at LIMIT 50")
   results := []Link{}
   for rows.Next() {
     link := new(Link)
-    rows.Scan(&link.url, &link.source, &link.category, &link.text)
+    rows.Scan(&link.url, &link.subreddit, &link.title)
     results = append(results, *link)
   }
   return results
@@ -73,23 +73,23 @@ func SaveLinks(links []Link) {
   db := getdb()
   defer db.Close()
   for _, link := range links {
-    db.Exec("INSERT INTO links (url, source, category, text) VALUES ($1, $2, $3, $4)", link.url, link.source, link.category, link.text)
+    db.Exec("INSERT INTO links (url, subreddit, title, created_at) VALUES ($1, $2, $3, $4)", link.url, link.subreddit, link.title, time.Now())
   }
 }
 
-func GetTwitterLinks() []Link {
-  response, _ := http.Get("http://search.twitter.com/search.json?q=golang&include_entities=true&rpp=300&lang=en")
+
+func GetRedditLinks(sub string) []Link {
+  response, _ := http.Get("http://www.reddit.com/r/" + sub + ".json?limit=100")
   defer response.Body.Close()
   contents, _ := ioutil.ReadAll(response.Body)
-  var resp TwitterJSON
-  json.Unmarshal(contents, &resp)
-  var links []Link
-  for _, result := range resp.Results {
-    if len(result.Entities.Urls) > 0 {
-      link := Link{url: result.Entities.Urls[0].Expanded_url, source: "Twitter", category: "Go", text: result.Text}
-      if GoodUrl(links, link.url) {
-        links = append(links, link)
-      }
+  var stories RedditJSON
+  json.Unmarshal(contents, &stories)
+  children := stories.Data.Children
+  links := []Link{}
+  for _, child := range children {
+    if IsNotReddit(child.Data.Url) {
+      link := Link{url: child.Data.Url, subreddit: sub, title: child.Data.Title}
+      links = append(links, link)
     }
   }
   return links
@@ -102,6 +102,13 @@ func Contains(seq[]Link, url string) bool{
     }
   }
   return false
+}
+
+func IsNotReddit(url string) bool {
+  if strings.Contains(url, "reddit") {
+    return false
+  }
+  return true
 }
 
 func NoShortUrl(url string) bool {

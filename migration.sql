@@ -1,9 +1,8 @@
 ﻿CREATE TABLE links
 (
 id serial,
-url varchar,
-source varchar,
-category varchar,
-text text,
+url varchar UNIQUE,
+subreddit varchar,
+title text,
 created_at timestamp without time zone
 )
