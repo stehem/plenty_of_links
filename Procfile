@@ -1,1 +1,1 @@
-web: go run plenty.go
+web: plenty_of_links
