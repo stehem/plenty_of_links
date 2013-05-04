@@ -14,6 +14,7 @@ import (
   "strings"
   "time"
   "os"
+  "log"
 )
 
 type Link struct {
@@ -39,12 +40,16 @@ func main() {
   //results := getlinks()
   //fmt.Println(results)
   //SaveLinks(GetTwitterLinks())
-  //http.HandleFunc("/", plenty)
-  plenty()
+  http.HandleFunc("/fetch", plenty)
+  err := http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+  if err != nil {
+    log.Fatal("ListenAndServe:", err)
+  }
+  //plenty()
 }
 
-//func plenty(w http.ResponseWriter, req *http.Request) {
-func plenty() {
+func plenty(w http.ResponseWriter, req *http.Request) {
+//func plenty() {
   subs := []string{"ruby", "golang", "python", "javascript", "clojure", "scala"}
   for _, sub := range subs {
     fmt.Println(sub)

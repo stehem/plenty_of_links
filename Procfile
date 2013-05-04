@@ -1,1 +1,1 @@
-worker: go run plenty.go
+web: go run plenty.go
