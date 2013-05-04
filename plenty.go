@@ -37,25 +37,26 @@ type RedditJSON struct {
 
 
 func main() {
-  //results := getlinks()
-  //fmt.Println(results)
-  //SaveLinks(GetTwitterLinks())
   http.HandleFunc("/fetch", plenty)
-  err := http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+  port := os.Getenv("PORT")
+  if port == "" {
+    port = "8080"
+  }
+  err := http.ListenAndServe(":"+port, nil)
   if err != nil {
     log.Fatal("ListenAndServe:", err)
   }
-  //plenty()
 }
 
 func plenty(w http.ResponseWriter, req *http.Request) {
-//func plenty() {
-  subs := []string{"ruby", "golang", "python", "javascript", "clojure", "scala"}
-  for _, sub := range subs {
-    fmt.Println(sub)
-    links := GetRedditLinks(sub)
-    SaveLinks(links)
-  }
+  go func() {
+    subs := []string{"ruby", "golang", "python", "javascript", "clojure", "scala"}
+    for _, sub := range subs {
+      fmt.Println(sub)
+      links := GetRedditLinks(sub)
+      SaveLinks(links)
+    }
+  }()
 }
 
 func getdb() *sql.DB {
