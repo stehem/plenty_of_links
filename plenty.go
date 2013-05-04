@@ -3,7 +3,7 @@
 package main
 
 import (
-  _ "github.com/bmizerany/pq"
+  "github.com/bmizerany/pq"
   "github.com/dlintw/goconf"
   "database/sql"
   "fmt"
@@ -13,6 +13,7 @@ import (
   "unicode/utf8"
   "strings"
   "time"
+  "os"
 )
 
 type Link struct {
@@ -38,19 +39,30 @@ func main() {
   //results := getlinks()
   //fmt.Println(results)
   //SaveLinks(GetTwitterLinks())
+  //http.HandleFunc("/", plenty)
+  plenty()
+}
+
+//func plenty(w http.ResponseWriter, req *http.Request) {
+func plenty() {
   subs := []string{"ruby", "golang", "python", "javascript", "clojure", "scala"}
   for _, sub := range subs {
+    fmt.Println(sub)
     links := GetRedditLinks(sub)
     SaveLinks(links)
   }
 }
 
 func getdb() *sql.DB {
-  c, _ := goconf.ReadConfigFile("db.config")
-  user, _ := c.GetString("dev", "user") 
-  pass, _ := c.GetString("dev", "password") 
-  base := "user=%s password=%s dbname=postgres"
-  settings := fmt.Sprintf(base, user, pass)
+  var settings, herokupg, localpg string
+  herokupg = os.Getenv("DATABASE_URL")
+  if herokupg != "" {
+    settings, _ = pq.ParseURL(herokupg)
+  } else {
+    c, _ := goconf.ReadConfigFile("db.config")
+    localpg, _ = c.GetString("dev", "postgresurl")
+    settings, _  = pq.ParseURL(localpg)
+  }
   db, _ := sql.Open("postgres", settings)
   return db
 }
